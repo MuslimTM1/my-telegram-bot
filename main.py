@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 PHONE_NUMBER, REPEATS = range(2)
 
 # The bot token
-TOKEN = "YOUR_BOT_TOKEN"
+TOKEN = "7618261878:AAGyoMuFThdLwOMbcBIR9W9rqo2wq2abVlA"
 
 # Start command with button
 def start(update: Update, context: CallbackContext) -> None:
