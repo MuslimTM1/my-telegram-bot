@@ -78,15 +78,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("SPAM", callback_data='spam')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("Welcome to SecretCall SMS Bot! Click the button below to start spamming.", reply_markup=reply_markup)
+    await update.message.reply_text(
+        "Добро пожаловать в Секретный бот! Нажмите кнопку 'SPAM', чтобы начать спам.",
+        reply_markup=reply_markup
+    )
 
 # Function to handle the SPAM button click
 async def spam_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()  # Acknowledge the button click
-    
+
     # Ask for the phone number
-    await query.edit_message_text("Please enter the phone number you want to spam:")
+    await query.edit_message_text("Введите номер, например: +77XXXXXXXXX")
 
     # Set the state to expect the phone number
     context.user_data['spam_state'] = 'waiting_for_number'
@@ -98,8 +101,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Save the phone number
         context.user_data['phone_number'] = number
 
+        # Inform about the spam duration
+        await update.message.reply_text("Спам будет запущен на 1 час.")
+
         # Ask for the repeat count
-        await update.message.reply_text("How many times do you want to spam this number?")
+        await update.message.reply_text("Введите число на спам.")
 
         # Change the state to expect the repeat count
         context.user_data['spam_state'] = 'waiting_for_repeats'
@@ -117,11 +123,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             bloodtrail.format_data()
             bloodtrail.start_threads(repeats)
 
-            await update.message.reply_text(f"Started spamming {number} for {repeats} times!")
+            await update.message.reply_text(f"Успешный спам завершён на номер {number} за {repeats} раз!")
             context.user_data.clear()  # Reset the state after completion
 
         except ValueError:
-            await update.message.reply_text("Please enter a valid number of repeats.")
+            await update.message.reply_text("Пожалуйста, введите корректное число для повторений.")
 
 # Main function to run the bot
 def main():
