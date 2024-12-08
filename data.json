@@ -10,8 +10,66 @@
                 "surname": "",
                 "phone": "%NUMBER%"
             }
+        },
+        "mechta": {
+            "url": "https://www.mechta.kz/api/v2/send-sms",
+            "phone_f": 1,
+            "data_type": "json",
+            "data": {
+                "phone": "%NUMBER%",
+                "type": "login"
+            }
+        },
+        "korzinavdom": {
+            "url": "https://api.korzinavdom.kz/client/auth/smsRequest",
+            "phone_f": 0,
+            "data_type": "json",
+            "data": {
+                "phone": "%NUMBER%"
+            }
+        },
+        "my_telegram": {
+            "url": "https://my.telegram.org/auth/send_password",
+            "phone_f": 0,
+            "data_type": "data",
+            "data": {
+                "phone": "%NUMBER%"
+            }
+        },
+        "mycar": {
+            "url": "https://sso.mycar.kz/auth/login",
+            "phone_f": 0,
+            "data_type": "json",
+            "data": {
+                "phone_number": "%NUMBER%"
+            }
+        },
+        "flip": {
+            "url": "https://www.flip.kz/user?enter=",
+            "phone_f": 0,
+            "data_type": "data",
+            "data": {
+                "username": "%NUMBER%"
+            }
+        },
+        "naimi_sms": {
+            "url": "https://naimi.kz/api/app/pub/login/code",
+            "phone_f": 2,
+            "data_type": "json",
+            "data": {
+                "phone": "%NUMBER%",
+                "type": "sms"
+            }
+        },
+        "naimi_call": {
+            "url": "https://naimi.kz/api/app/pub/login/code",
+            "phone_f": 2,
+            "data_type": "json",
+            "data": {
+                "phone": "%NUMBER%",
+                "type": "call"
+            }
         }
-        // Other services...
     },
     "paid_users": {
         "users": [5956886600]
