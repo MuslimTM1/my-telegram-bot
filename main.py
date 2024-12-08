@@ -1,6 +1,6 @@
+import json
 from threading import Thread
 import requests
-import json
 import sys
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
@@ -12,6 +12,38 @@ logger = logging.getLogger(__name__)
 
 # Your Telegram bot token
 TOKEN = "7618261878:AAGyoMuFThdLwOMbcBIR9W9rqo2wq2abVlA"
+
+# Your Telegram User ID (replace this with your actual Telegram user ID)
+YOUR_USER_ID = 5252716406  # Replace with your actual user ID
+
+# Load paid users from data.json
+def load_paid_users():
+    try:
+        with open("data.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data["paid_users"]["users"]
+    except FileNotFoundError:
+        return []
+
+# Save paid users to data.json
+def save_paid_users(user_id):
+    try:
+        with open("data.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        if user_id not in data["paid_users"]["users"]:
+            data["paid_users"]["users"].append(user_id)
+
+        with open("data.json", "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+    except FileNotFoundError:
+        data = {
+            "paid_users": {
+                "users": [user_id]
+            }
+        }
+        with open("data.json", "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
 
 class BloodTrail:
     def __init__(self, number):
@@ -71,11 +103,19 @@ class BloodTrail:
 
 # Start command with SPAM and AUTOSPAM buttons
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("SPAM", callback_data='spam'), InlineKeyboardButton("AUTOSPAM", callback_data='autospam')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("Добро пожаловать в Секретный бот! Выберите 'SPAM' или 'AUTOSPAM'.", reply_markup=reply_markup)
+    user_id = update.effective_user.id
+    paid_users = load_paid_users()
+
+    if user_id == YOUR_USER_ID or user_id in paid_users:
+        # If the user is you or a paid user, show the options
+        keyboard = [
+            [InlineKeyboardButton("SPAM", callback_data='spam'), InlineKeyboardButton("AUTOSPAM", callback_data='autospam')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("Добро пожаловать в Секретный бот! Выберите 'SPAM' или 'AUTOSPAM'.", reply_markup=reply_markup)
+    else:
+        # If the user is not authorized, show restricted access message
+        await update.message.reply_text("Напишите его @muslimtm1, оно платное!")
 
 # Handle SPAM button
 async def spam_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
