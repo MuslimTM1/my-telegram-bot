@@ -16,7 +16,7 @@ def load_data():
         with open("data.json", "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
-        return {"last_used_number": None}
+        return {"last_used_number": None, "paid_users": {"users": []}}
 
 # Save data to data.json
 def save_data(data):
