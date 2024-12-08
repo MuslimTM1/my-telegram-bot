@@ -70,5 +70,8 @@
                 "type": "call"
             }
         }
+    },
+    "paid_users": {
+        "users": []  // This list will store the user IDs of people who paid
     }
 }
