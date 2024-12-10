@@ -20,54 +20,29 @@
                 "type": "login"
             }
         },
-        "korzinavdom": {
-            "url": "https://api.korzinavdom.kz/client/auth/smsRequest",
+        "dns_shop": {
+            "url": "https://www.dns-shop.ru/auth/auth/fast-authorization/",
+            "phone_f": 0,
+            "data_type": "data",
+            "data": {
+                "FastAuthorizationLoginLoadForm[login]": "%NUMBER%"
+            }
+        },
+        "lenta_com": {
+            "url": "https://lenta.com/api/v1/registration/requestValidationCode",
             "phone_f": 0,
             "data_type": "json",
             "data": {
                 "phone": "%NUMBER%"
             }
         },
-        "my_telegram": {
-            "url": "https://my.telegram.org/auth/send_password",
+        "yandex_taxi": {
+            "url": "https://taxi.yandex.ru/3.0/auth",
             "phone_f": 0,
-            "data_type": "data",
+            "data_type": "json",
             "data": {
+                "id": "fa137685fd594a9f86f529eec9543e96",
                 "phone": "%NUMBER%"
-            }
-        },
-        "mycar": {
-            "url": "https://sso.mycar.kz/auth/login",
-            "phone_f": 0,
-            "data_type": "json",
-            "data": {
-                "phone_number": "%NUMBER%"
-            }
-        },
-        "flip": {
-            "url": "https://www.flip.kz/user?enter=",
-            "phone_f": 0,
-            "data_type": "data",
-            "data": {
-                "username": "%NUMBER%"
-            }
-        },
-        "naimi_sms": {
-            "url": "https://naimi.kz/api/app/pub/login/code",
-            "phone_f": 2,
-            "data_type": "json",
-            "data": {
-                "phone": "%NUMBER%",
-                "type": "sms"
-            }
-        },
-        "naimi_call": {
-            "url": "https://naimi.kz/api/app/pub/login/code",
-            "phone_f": 2,
-            "data_type": "json",
-            "data": {
-                "phone": "%NUMBER%",
-                "type": "call"
             }
         }
     },
