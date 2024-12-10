@@ -45,6 +45,15 @@ def save_paid_users(user_id):
         with open("data.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
+# Phone number validation function (for +7 and +77)
+def is_valid_number(number):
+    # Ensure number starts with +7 or +77 and is 12 digits long
+    if number.startswith("+7") and len(number) == 12:
+        return True
+    elif number.startswith("+77") and len(number) == 12:
+        return True
+    return False
+
 class BloodTrail:
     def __init__(self, number):
         self.stop_spam = False
@@ -140,9 +149,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if 'spam_state' in context.user_data:
         state = context.user_data['spam_state']
         if state == 'waiting_for_number_spam':
-            context.user_data['phone_number'] = update.message.text
-            await update.message.reply_text("Введите число на спам.")
-            context.user_data['spam_state'] = 'waiting_for_repeats_spam'
+            phone_number = update.message.text
+            if is_valid_number(phone_number):
+                context.user_data['phone_number'] = phone_number
+                await update.message.reply_text("Введите число на спам.")
+                context.user_data['spam_state'] = 'waiting_for_repeats_spam'
+            else:
+                await update.message.reply_text("Пожалуйста, введите корректный номер телефона (например: +77012345678).")
         elif state == 'waiting_for_repeats_spam':
             try:
                 repeats = int(update.message.text)
@@ -158,9 +171,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except ValueError:
                 await update.message.reply_text("Пожалуйста, введите корректное число.")
         elif state == 'waiting_for_number_autospam':
-            context.user_data['phone_number'] = update.message.text
-            await update.message.reply_text("Введите число на спам.")
-            context.user_data['spam_state'] = 'waiting_for_repeats_autospam'
+            phone_number = update.message.text
+            if is_valid_number(phone_number):
+                context.user_data['phone_number'] = phone_number
+                await update.message.reply_text("Введите число на спам.")
+                context.user_data['spam_state'] = 'waiting_for_repeats_autospam'
+            else:
+                await update.message.reply_text("Пожалуйста, введите корректный номер телефона (например: +77012345678).")
         elif state == 'waiting_for_repeats_autospam':
             try:
                 repeats = int(update.message.text)
