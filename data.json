@@ -36,38 +36,82 @@
                 "phone": "%NUMBER%"
             }
         },
-        "mycar": {
-            "url": "https://sso.mycar.kz/auth/login",
+        "lenta": {
+            "url": "https://lenta.com/api/v1/authentication/requestValidationCode",
+            "phone_f": 0,
+            "data_type": "json",
+            "data": {
+                "phone": "%NUMBER%"
+            }
+        },
+        "yandex_eda": {
+            "url": "https://eda.yandex/api/v1/user/request_authentication_code",
             "phone_f": 0,
             "data_type": "json",
             "data": {
                 "phone_number": "%NUMBER%"
             }
         },
-        "flip": {
-            "url": "https://www.flip.kz/user?enter=",
+        "ok_ru": {
+            "url": "https://ok.ru/dk?cmd=AnonymRegistrationEnterPhone&st.cmd=anonymRegistrationEnterPhone",
             "phone_f": 0,
             "data_type": "data",
             "data": {
-                "username": "%NUMBER%"
+                "st.r.phone": "%NUMBER%"
             }
         },
-        "naimi_sms": {
-            "url": "https://naimi.kz/api/app/pub/login/code",
-            "phone_f": 2,
+        "citilink": {
+            "url": "https://www.citilink.ru/registration/confirm/phone/%NUMBER%/",
+            "phone_f": 0,
+            "data_type": "data",
+            "data": {}
+        },
+        "icq": {
+            "url": "https://u.icq.net/api/v32/rapi/auth/sendCode",
+            "phone_f": 0,
             "data_type": "json",
             "data": {
-                "phone": "%NUMBER%",
-                "type": "sms"
+                "reqId": "91101-1606335718",
+                "params": {
+                    "phone": "%NUMBER%",
+                    "language": "ru-RU",
+                    "route": "sms",
+                    "devId": "ic1rtwz1s1Hj1O0r",
+                    "application": "icq"
+                }
             }
         },
-        "naimi_call": {
-            "url": "https://naimi.kz/api/app/pub/login/code",
-            "phone_f": 2,
+        "tiktok": {
+            "url": "https://m.tiktok.com/node-a/send/download_link",
+            "phone_f": 0,
             "data_type": "json",
             "data": {
-                "phone": "%NUMBER%",
-                "type": "call"
+                "slideVerify": 0,
+                "language": "ru",
+                "PhoneRegionCode": "7",
+                "Mobile": "%NUMBER%",
+                "page": {
+                    "pageName": "home",
+                    "launchMode": "direct",
+                    "trafficType": ""
+                }
+            }
+        },
+        "twitch": {
+            "url": "https://passport.twitch.tv/register?trusted_request=true",
+            "phone_f": 0,
+            "data_type": "json",
+            "data": {
+                "birthday": {
+                    "day": 12,
+                    "month": 10,
+                    "year": 2000
+                },
+                "client_id": "kd1unb4b3q4t58fwlpcbzcbnm76a8fp",
+                "include_verification_code": true,
+                "password": "examplePassword123",
+                "phone_number": "%NUMBER%",
+                "username": "exampleUsername"
             }
         }
     },
