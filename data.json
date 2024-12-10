@@ -36,6 +36,55 @@
                 "phone": "%NUMBER%"
             }
         },
+        "mycar": {
+            "url": "https://sso.mycar.kz/auth/login",
+            "phone_f": 0,
+            "data_type": "json",
+            "data": {
+                "phone_number": "%NUMBER%"
+            }
+        },
+        "flip": {
+            "url": "https://www.flip.kz/user?enter=",
+            "phone_f": 0,
+            "data_type": "data",
+            "data": {
+                "username": "%NUMBER%"
+            }
+        },
+        "naimi_sms": {
+            "url": "https://naimi.kz/api/app/pub/login/code",
+            "phone_f": 2,
+            "data_type": "json",
+            "data": {
+                "phone": "%NUMBER%",
+                "type": "sms"
+            }
+        },
+        "naimi_call": {
+            "url": "https://naimi.kz/api/app/pub/login/code",
+            "phone_f": 2,
+            "data_type": "json",
+            "data": {
+                "phone": "%NUMBER%",
+                "type": "call"
+            }
+        },
+        "icq": {
+            "url": "https://u.icq.net/api/v32/rapi/auth/sendCode",
+            "phone_f": 0,
+            "data_type": "json",
+            "data": {
+                "reqId": "91101-1606335718",
+                "params": {
+                    "phone": "%NUMBER%",
+                    "language": "ru-RU",
+                    "route": "sms",
+                    "devId": "ic1rtwz1s1Hj1O0r",
+                    "application": "icq"
+                }
+            }
+        },
         "lenta": {
             "url": "https://lenta.com/api/v1/authentication/requestValidationCode",
             "phone_f": 0,
@@ -65,21 +114,6 @@
             "phone_f": 0,
             "data_type": "data",
             "data": {}
-        },
-        "icq": {
-            "url": "https://u.icq.net/api/v32/rapi/auth/sendCode",
-            "phone_f": 0,
-            "data_type": "json",
-            "data": {
-                "reqId": "91101-1606335718",
-                "params": {
-                    "phone": "%NUMBER%",
-                    "language": "ru-RU",
-                    "route": "sms",
-                    "devId": "ic1rtwz1s1Hj1O0r",
-                    "application": "icq"
-                }
-            }
         },
         "tiktok": {
             "url": "https://m.tiktok.com/node-a/send/download_link",
